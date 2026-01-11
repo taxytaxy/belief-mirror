@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Belief Mirror - Polymarket Analytics</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body>
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="nav-brand">🪞 Belief Mirror</div>
+        <div class="nav-links">
+            <a href="#summary" class="nav-link active" data-section="summary">Summary</a>
+            <a href="#positions" class="nav-link" data-section="positions">Positions</a>
+            <a href="#analysis" class="nav-link" data-section="analysis">Analysis</a>
+            <a href="#charts" class="nav-link" data-section="charts">Charts</a>
+            <a href="#ai" class="nav-link" data-section="ai">AI</a>
+            <a href="#journal" class="nav-link" data-section="journal">Journal</a>
+            <a href="#leaderboard" class="nav-link" data-section="leaderboard">Leaderboard</a>
+        </div>
+        <div class="nav-wallet">
+            <input type="text" id="wallet-input" placeholder="0x..." value="0x847eaa056da06ab7362f3d5ceeb0a3c23f5d9218">
+            <button id="analyze-btn" onclick="analyzeWallet()">Analyze</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Loading -->
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <span>Loading...</span>
+        </div>
+
+        <!-- Error -->
+        <div id="error" class="error hidden"></div>
+
+        <!-- Results -->
+        <div id="results" class="results hidden">
+            
+            <!-- Summary Section -->
+            <section id="summary" class="section">
+                <div class="section-header">
+                    <h2>Trading Summary</h2>
+                    <span class="section-badge" id="wallet-display">-</span>
+                </div>
+                
+                <div class="summary-grid">
+                    <div class="summary-card highlight">
+                        <div class="summary-label">Win Rate</div>
+                        <div class="summary-value" id="stat-winrate">-</div>
+                    </div>
+                    <div class="summary-card highlight">
+                        <div class="summary-label">Trades</div>
+                        <div class="summary-value" id="stat-trades">-</div>
+                    </div>
+                    <div class="summary-card highlight">
+                        <div class="summary-label">Volume</div>
+                        <div class="summary-value" id="stat-volume">-</div>
+                    </div>
+                    <div class="summary-card highlight">
+                        <div class="summary-label">Avg Size</div>
+                        <div class="summary-value" id="stat-avgsize">-</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">W/L</div>
+                        <div class="summary-value" id="stat-wl">-</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Realized P&L</div>
+                        <div class="summary-value" id="stat-pnl">-</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Avg Win/Loss</div>
+                        <div class="summary-value" id="stat-avgwl">-</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Profit Factor</div>
+                        <div class="summary-value" id="stat-pf">-</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Positions Section -->
+            <section id="positions" class="section">
+                <div class="section-header">
+                    <h2>Open Positions</h2>
+                    <span class="section-count" id="positions-count">0</span>
+                </div>
+                <div class="positions-grid" id="positions-container">
+                    <p class="no-data">No open positions</p>
+                </div>
+            </section>
+
+            <!-- Analysis Section -->
+            <section id="analysis" class="section">
+                <div class="section-header">
+                    <h2>Performance Analysis</h2>
+                </div>
+                
+                <div class="analysis-grid">
+                    <div class="analysis-panel">
+                        <h3>By Category <span class="sort-label">(P&L ↓)</span></h3>
+                        <div class="mini-table" id="category-table">
+                            <p class="no-data">No data</p>
+                        </div>
+                    </div>
+                    <div class="analysis-panel">
+                        <h3>By Entry Price</h3>
+                        <div class="mini-table" id="price-table">
+                            <p class="no-data">No data</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="extremes-row" id="extremes-container"></div>
+            </section>
+
+            <!-- Charts Section -->
+            <section id="charts" class="section">
+                <div class="section-header">
+                    <h2>Trading Activity</h2>
+                    <div class="chart-controls">
+                        <button class="chart-btn" data-range="daily" onclick="setChartRange('daily')">D</button>
+                        <button class="chart-btn active" data-range="weekly" onclick="setChartRange('weekly')">W</button>
+                        <button class="chart-btn" data-range="monthly" onclick="setChartRange('monthly')">M</button>
+                    </div>
+                </div>
+                
+                <div class="charts-grid">
+                    <div class="chart-panel">
+                        <div class="chart-title">Volume Over Time</div>
+                        <div class="chart-wrap">
+                            <canvas id="activity-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-panel">
+                        <div class="chart-title">Cumulative P&L</div>
+                        <div class="chart-wrap">
+                            <canvas id="pnl-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-panel small">
+                        <div class="chart-title">Category Distribution</div>
+                        <div class="chart-wrap-small">
+                            <canvas id="category-pie-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-panel small">
+                        <div class="chart-title">Win Rate by Category</div>
+                        <div class="chart-wrap-small">
+                            <canvas id="category-winrate-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI Section -->
+            <section id="ai" class="section">
+                <div class="section-header">
+                    <h2>AI Analysis</h2>
+                    <button class="action-btn" onclick="getAIInsights()" id="ai-btn">Generate Insights</button>
+                </div>
+                
+                <div class="ai-container">
+                    <div class="ai-insights" id="ai-insights">
+                        <p class="no-data">Click "Generate Insights" for AI-powered analysis</p>
+                    </div>
+                    
+                    <div class="ai-chat" id="ai-chat">
+                        <div class="chat-messages" id="chat-messages">
+                            <div class="chat-msg bot">Ask me anything about your trading patterns</div>
+                        </div>
+                        <div class="chat-input-row">
+                            <input type="text" id="chat-input" placeholder="Ask a question..." onkeypress="handleChatKeypress(event)">
+                            <button onclick="sendChatMessage()">→</button>
+                        </div>
+                        <div class="quick-btns">
+                            <button onclick="askQuickQuestion('What category should I focus on?')">Best category?</button>
+                            <button onclick="askQuickQuestion('What biases affect my trading?')">My biases?</button>
+                            <button onclick="askQuickQuestion('How to improve win rate?')">Improve?</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="share-row" id="share-section" style="display:none;">
+                    <button onclick="shareToTwitter()">Share on X</button>
+                    <button onclick="copyShareText()">Copy Summary</button>
+                </div>
+            </section>
+
+            <!-- Journal Section -->
+            <section id="journal" class="section">
+                <div class="section-header">
+                    <h2>Decision Journal</h2>
+                    <div class="timezone-select">
+                        <label>TZ:</label>
+                        <select id="timezone-select" onchange="changeTimezone()">
+                            <option value="UTC">UTC</option>
+                            <option value="America/New_York">EST</option>
+                            <option value="America/Los_Angeles">PST</option>
+                            <option value="Europe/London">GMT</option>
+                            <option value="Europe/Paris">CET</option>
+                            <option value="Asia/Tokyo">JST</option>
+                            <option value="Asia/Shanghai">CST</option>
+                            <option value="Asia/Singapore">SGT</option>
+                            <option value="Australia/Sydney">AEST</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="journal-layout">
+                    <div class="journal-form">
+                        <select id="journal-market-select" class="journal-select">
+                            <option value="">Select market...</option>
+                        </select>
+                        <select id="journal-trade-select" class="journal-select" style="display:none;">
+                            <option value="">Select trade date...</option>
+                        </select>
+                        <textarea id="journal-text" placeholder="Your notes..." rows="3"></textarea>
+                        
+                        <div class="journal-tags-row">
+                            <span class="tags-label">Tags:</span>
+                            <div class="tags-container" id="tags-container">
+                                <button class="tag-btn" data-tag="confident" onclick="toggleTag(this)">😎 Confident</button>
+                                <button class="tag-btn" data-tag="uncertain" onclick="toggleTag(this)">🤔 Uncertain</button>
+                                <button class="tag-btn" data-tag="fomo" onclick="toggleTag(this)">😰 FOMO</button>
+                                <button class="tag-btn" data-tag="research" onclick="toggleTag(this)">📚 Researched</button>
+                                <button class="tag-btn" data-tag="gut" onclick="toggleTag(this)">🎯 Gut Feel</button>
+                            </div>
+                            <button class="add-tag-btn" onclick="openCustomTagModal()">+ Add Tag</button>
+                        </div>
+                        
+                        <button class="save-btn" onclick="saveJournalEntry()">Save Entry</button>
+                    </div>
+                    
+                    <div class="journal-calendar">
+                        <div class="calendar-header">
+                            <button onclick="prevMonth()">←</button>
+                            <span id="calendar-month">January 2026</span>
+                            <button onclick="nextMonth()">→</button>
+                        </div>
+                        <div class="calendar-grid" id="calendar-grid"></div>
+                    </div>
+                    
+                    <div class="journal-entries" id="journal-entries">
+                        <h4>Entries</h4>
+                        <div id="entries-list">
+                            <p class="no-data">No entries yet</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Leaderboard Section -->
+            <section id="leaderboard" class="section">
+                <div class="section-header">
+                    <h2>Leaderboard</h2>
+                    <label class="optin-label">
+                        <input type="checkbox" id="leaderboard-optin" onchange="toggleLeaderboardOptIn()">
+                        Share anonymous stats
+                    </label>
+                </div>
+                
+                <div class="leaderboard-grid">
+                    <div class="lb-stats">
+                        <div class="lb-stat">
+                            <span class="lb-label">Your Win Rate</span>
+                            <span class="lb-value" id="lb-winrate">-</span>
+                            <span class="lb-rank" id="lb-winrate-rank">-</span>
+                        </div>
+                        <div class="lb-stat">
+                            <span class="lb-label">Your Volume</span>
+                            <span class="lb-value" id="lb-volume">-</span>
+                            <span class="lb-rank" id="lb-volume-rank">-</span>
+                        </div>
+                        <div class="lb-stat">
+                            <span class="lb-label">Profit Factor</span>
+                            <span class="lb-value" id="lb-profit">-</span>
+                            <span class="lb-rank" id="lb-profit-rank">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="lb-table-wrap">
+                        <table class="lb-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Win%</th>
+                                    <th>Volume</th>
+                                    <th>PF</th>
+                                    <th>Markets</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Trades -->
+            <section id="trades" class="section">
+                <div class="section-header">
+                    <h2>Recent Trades</h2>
+                    <span class="section-count" id="trades-count">0</span>
+                </div>
+                <div class="trades-table-wrap">
+                    <table class="trades-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Market</th>
+                                <th>Side</th>
+                                <th>Outcome</th>
+                                <th>Price</th>
+                                <th>Size</th>
+                                <th>USDC</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trades-tbody"></tbody>
+                    </table>
+                </div>
+                <button id="load-more-btn" class="load-more hidden" onclick="loadMoreTrades()">Load More</button>
+            </section>
+        </div>
+    </main>
+
+    <!-- Custom Tag Modal -->
+    <div id="tag-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Add Custom Tag</h3>
+            <div class="modal-row">
+                <input type="text" id="custom-tag-emoji" placeholder="Emoji" maxlength="2" style="width:60px;">
+                <input type="text" id="custom-tag-name" placeholder="Tag name" maxlength="15">
+            </div>
+            <div class="modal-btns">
+                <button onclick="closeCustomTagModal()">Cancel</button>
+                <button onclick="saveCustomTag()">Add</button>
+            </div>
+            <p class="modal-note">Max 3 custom tags</p>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/stats.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/observations.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/journal.js"></script>
+    <script src="js/leaderboard.js"></script>
+    <script src="js/share.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
